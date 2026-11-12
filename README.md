@@ -17,7 +17,9 @@ Reduzir o trabalho manual e repetitivo durante a busca por recolocação ou nova
   * Modalidades **Remoto** e **Híbrido** (`f_WT=2,3`).
   * Níveis de experiência selecionáveis: **Júnior**, **Sênior** e **Especialista** (`f_E`).
 * **Automação Assistida de Formulários:** Clica automaticamente no botão de candidatura e avança pelas etapas padrão (*Avançar*, *Prosseguir*, *Revisar*) até a tela de confirmação final ou até encontrar perguntas personalizadas que exijam intervenção humana.
-* **Suporte a Anexo de Currículo (PDF):** Preparado para injetar o arquivo de currículo armazenado localmente no `chrome.storage` via API `DataTransfer` caso o formulário solicite upload.
+* **Anexo de Currículo (PDF):** Salva localmente o PDF escolhido no popup e tenta anexá-lo via API `DataTransfer` quando o formulário solicitar upload.
+
+Para configurar o currículo, escolha um PDF de até 7 MB no popup da extensão. O arquivo fica armazenado localmente no navegador e é anexado quando a etapa da candidatura solicitar upload. Revise as respostas e confirme o envio manualmente na etapa final.
 
 ---
 

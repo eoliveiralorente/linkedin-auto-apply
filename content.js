@@ -8,33 +8,43 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 async function processarCandidatura() {
   console.log("Iniciando processo de candidatura...");
 
-  // 1. Localizar e clicar no botão "Candidatura Simplificada"
-  const applyButton = document.querySelector('.jobs-apply-button');
+  const applyButton = encontrarBotaoCandidatura();
   if (!applyButton) {
     alert("Botão 'Candidatura Simplificada' não encontrado nesta vaga.");
     return;
   }
-  
+
   applyButton.click();
   await sleep(1500);
 
-  // 2. Loop para percorrer o modal de candidatura
   let loopCount = 0;
   const maxSteps = 10;
 
   while (loopCount < maxSteps) {
     loopCount++;
 
-    // Tenta anexar o PDF do CV caso o campo de upload esteja visível nesta etapa
     await tratarUploadCurriculo();
 
-    const nextButton = document.querySelector('button[aria-label*="Avançar"], button[aria-label*="Prosseguir"], button[aria-label*="Revisar"]');
-    const submitButton = document.querySelector('button[aria-label*="Enviar candidatura"], button[aria-label*="Submit application"]');
+    const applicationModal = document.querySelector('[role="dialog"], .artdeco-modal');
+    const buttons = Array.from((applicationModal || document).querySelectorAll('button, [role="button"]'))
+      .filter(button => button.getClientRects().length > 0 && !button.disabled);
+    const getButtonLabel = button =>
+      `${button.getAttribute('aria-label') || ''} ${button.innerText || button.textContent || ''}`
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLocaleLowerCase();
+    const submitButton = buttons.find(button =>
+      /enviar candidatura|submit application/.test(getButtonLabel(button))
+    );
 
     if (submitButton) {
       console.log("Chegou na etapa final! Clique manual recomendado para envio.");
       break;
     }
+
+    const nextButton = buttons.find(button =>
+      /avançar|prosseguir|revisar|continuar|next|continue|review/.test(getButtonLabel(button))
+    );
 
     if (nextButton) {
       console.log(`Avançando etapa ${loopCount}...`);
@@ -47,30 +57,39 @@ async function processarCandidatura() {
   }
 }
 
+function encontrarBotaoCandidatura() {
+  const candidates = Array.from(document.querySelectorAll(
+    '.jobs-apply-button, button, [role="button"]'
+  ));
+  return candidates.find(button => {
+    if (!button.getClientRects().length || button.disabled) return false;
+    const label = `${button.getAttribute('aria-label') || ''} ${button.innerText || button.textContent || ''}`
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLocaleLowerCase();
+    return /candidatura simplificada|easy apply/.test(label);
+  });
+}
+
 async function tratarUploadCurriculo() {
   const fileInput = document.querySelector('input[type="file"]');
-  
+
   if (fileInput && fileInput.files.length === 0) {
-    // Busca o CV armazenado na extensão (salvo via storage local)
     const data = await chrome.storage.local.get("userCV");
     if (!data.userCV) {
-      console.warn("Nenhum currículo em PDF foi configurado na extensão.");
+      console.warn("Nenhum currículo foi configurado na extensão.");
       return;
     }
 
-    // Converte a string Base64 de volta para um objeto File do navegador
     const file = await base64ToFile(data.userCV.base64, data.userCV.name, data.userCV.type);
-
-    // Usa a API DataTransfer para simular a seleção do arquivo
     const dataTransfer = new DataTransfer();
     dataTransfer.items.add(file);
     fileInput.files = dataTransfer.files;
 
-    // Dispara eventos para o LinkedIn reconhecer a inclusão do ficheiro
     fileInput.dispatchEvent(new Event('change', { bubbles: true }));
     fileInput.dispatchEvent(new Event('input', { bubbles: true }));
 
-    console.log("PDF do CV anexado com sucesso!");
+    console.log("Currículo anexado.");
     await sleep(1500);
   }
 }

@@ -43,3 +43,59 @@ document.getElementById('applyCurrent').addEventListener('click', async () => {
     console.error("Erro ao enviar mensagem para a página:", error);
   }
 });
+
+const cvFileInput = document.getElementById('cvFile');
+const cvStatus = document.getElementById('cvStatus');
+const maxCvSize = 7 * 1024 * 1024;
+
+chrome.storage.local.get("userCV").then(data => {
+  if (data.userCV) {
+    cvStatus.textContent = `Salvo: ${data.userCV.name}`;
+  }
+}).catch(error => {
+  console.error("Erro ao carregar o currículo salvo:", error);
+  cvStatus.textContent = "Não foi possível carregar o currículo salvo.";
+});
+
+cvFileInput.addEventListener('change', async () => {
+  const file = cvFileInput.files[0];
+  if (!file) return;
+
+  if (!file.name.toLocaleLowerCase().endsWith('.pdf')) {
+    cvStatus.textContent = "Selecione um arquivo PDF.";
+    cvFileInput.value = '';
+    return;
+  }
+
+  if (file.size > maxCvSize) {
+    cvStatus.textContent = "O PDF deve ter até 7 MB.";
+    cvFileInput.value = '';
+    return;
+  }
+
+  try {
+    const base64 = await fileToDataUrl(file);
+    await chrome.storage.local.set({
+      userCV: { name: file.name, type: file.type || 'application/pdf', base64 }
+    });
+    cvStatus.textContent = `Salvo: ${file.name}`;
+  } catch (error) {
+    console.error("Erro ao salvar o currículo:", error);
+    cvStatus.textContent = "Não foi possível salvar o currículo.";
+  }
+});
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+      } else {
+        reject(new Error("Não foi possível ler o arquivo."));
+      }
+    };
+    reader.onerror = () => reject(reader.error || new Error("Falha ao ler o PDF."));
+    reader.readAsDataURL(file);
+  });
+}
